@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Демо невидимая капча Yandex SmartCaptcha</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 28px;
+            padding: 40px;
+            max-width: 560px;
+            width: 100%;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: #4a4a6a;
+            margin-bottom: 28px;
+            font-size: 1rem;
+            border-left: 4px solid #667eea;
+            padding-left: 16px;
+            background: #f0f3fe;
+            border-radius: 0 12px 12px 0;
+            line-height: 1.4;
+        }
+
+        .geo-info {
+            background: #eef2ff;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #d0d9ff;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.1);
+            font-size: 0.95rem;
+            color: #1e293b;
+        }
+
+        .geo-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .geo-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .geo-icon {
+            font-size: 1.4rem;
+            width: 32px;
+            text-align: center;
+        }
+
+        .geo-text {
+            font-weight: 500;
+        }
+
+        .geo-text small {
+            font-weight: normal;
+            color: #475569;
+            margin-left: 6px;
+        }
+
+        .form {
+            margin: 24px 0 16px;
+        }
+
+        #captcha-container {
+            height: 0;
+            overflow: hidden;
+        }
+
+        .submit-btn {
+            background: linear-gradient(105deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 16px 32px;
+            width: 100%;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px -5px rgba(102, 126, 234, 0.5);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 18px 30px -5px rgba(102, 126, 234, 0.7);
+            background: linear-gradient(105deg, #5a6cd6, #6845a0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none;
+            background: linear-gradient(105deg, #a0a8d4, #8f7cb3);
+        }
+
+        .loader {
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-message {
+            margin-top: 20px;
+            padding: 14px 18px;
+            border-radius: 16px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8fafc;
+            border-left: 4px solid #94a3b8;
+            color: #1e293b;
+            font-size: 0.95rem;
+        }
+
+        .status-message.success {
+            background: #e6f7e6;
+            border-left-color: #10b981;
+            color: #065f46;
+        }
+
+        .status-message.error {
+            background: #fee9e7;
+            border-left-color: #ef4444;
+            color: #991b1b;
+        }
+
+        .note {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 14px 18px;
+            border-radius: 18px;
+            border: 1px dashed #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🛡️ Капча + Гео</h1>
+        <div class="subtitle">Демо невидимая капча</div>
+
+        <div class="geo-info" id="geo-info">
+            <div class="geo-item">
+                <span class="geo-icon">🌐</span>
+                <span class="geo-text">Определение местоположения...</span>
+            </div>
+        </div>
+
+        <form id="demo-form" class="form">
+            <div id="captcha-container"></div>
+            <button type="submit" class="submit-btn" id="submit-btn">
+                <span>✉️ Отправить запрос</span>
+            </button>
+        </form>
+
+        <div id="status-message" class="status-message">
+            <span>ℹ️</span>
+            <span>Ожидание отправки...</span>
+        </div>
+
+        <div class="note">
+            <p>🔐 Невидимая капча Yandex. При нажатии на кнопку запускается проверка. Токен выводится в консоль.</p>
+            <p style="margin-top: 8px;">📍 Гео определяется через ip-api.com. Если не работает – проверьте консоль.</p>
+        </div>
+    </div>
+
+    <script src="https://smartcaptcha.cloud.yandex.ru/captcha.js?render=onload&onload=initSmartCaptcha" defer></script>
+
+    <script>
+        let smartCaptchaWidgetId = null;
+        const form = document.getElementById('demo-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const statusDiv = document.getElementById('status-message');
+
+        async function fetchGeoInfo() {
+            const geoDiv = document.getElementById('geo-info');
+            try {
+                const response = await fetch('http://ip-api.com/json/');
+                if (!response.ok) throw new Error('Ошибка сети');
+                const data = await response.json();
+                
+                geoDiv.innerHTML = `
+                    <div class="geo-item">
+                        <span class="geo-icon">🌐</span>
+                        <span class="geo-text"><strong>IP:</strong> ${data.query || 'неизвестно'}</span>
+                    </div>
+                    <div class="geo-item">
+                        <span class="geo-icon">📍</span>
+                        <span class="geo-text"><strong>Регион:</strong> ${data.city ? data.city + ', ' : ''}${data.regionName ? data.regionName + ', ' : ''}${data.country || 'неизвестно'}</span>
+                    </div>
+                    <div class="geo-item">
+                        <span class="geo-icon">🏢</span>
+                        <span class="geo-text"><strong>Провайдер:</strong> ${data.org || 'неизвестно'}</span>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Geo error:', error);
+                geoDiv.innerHTML = `
+                    <div class="geo-item">
+                        <span class="geo-icon">⚠️</span>
+                        <span class="geo-text">Не удалось определить гео (${error.message})</span>
+                    </div>
+                `;
+            }
+        }
+
+        fetchGeoInfo();
+
+        function initSmartCaptcha() {
+            if (!window.smartCaptcha) {
+                console.error('Библиотека SmartCaptcha не загрузилась');
+                statusDiv.innerHTML = '<span>❌</span><span>Ошибка загрузки капчи</span>';
+                statusDiv.classList.add('error');
+                return;
+            }
+
+            try {
+                smartCaptchaWidgetId = window.smartCaptcha.render('captcha-container', {
+                    sitekey: '<client_key>', // ПОДСТАВИТЬ СВОЙ КЛИЕНТСКИЙ КЛЮЧ СЮДА
+                    invisible: true,
+                    callback: function(token) {
+                        console.log('Капча пройдена, токен:', token);
+                        statusDiv.innerHTML = `<span>✅</span><span>Капча пройдена! Отправка...</span>`;
+                        statusDiv.classList.add('success');
+                        setTimeout(() => {
+                            alert('✅ Форма успешно отправлена (демо-режим)\nТокен: ' + token);
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<span>✉️ Отправить запрос</span>';
+                            statusDiv.innerHTML = '<span>ℹ️</span><span>Ожидание отправки...</span>';
+                            statusDiv.classList.remove('success', 'error');
+                        }, 500);
+                    },
+                });
+                console.log('Невидимая капча инициализирована, ID:', smartCaptchaWidgetId);
+            } catch (e) {
+                console.error('Ошибка рендера капчи:', e);
+                statusDiv.innerHTML = '<span>❌</span><span>Не удалось инициализировать капчу</span>';
+                statusDiv.classList.add('error');
+            }
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (!window.smartCaptcha || smartCaptchaWidgetId === null) {
+                statusDiv.innerHTML = '<span>⚠️</span><span>Капча ещё не загружена, попробуйте позже</span>';
+                statusDiv.classList.add('error');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loader"></span><span> Проверка...</span>';
+            statusDiv.innerHTML = '<span>🔄</span><span>Запуск проверки капчи...</span>';
+            statusDiv.classList.remove('success', 'error');
+
+            try {
+                window.smartCaptcha.execute(smartCaptchaWidgetId);
+            } catch (error) {
+                console.error('Ошибка execute:', error);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>✉️ Отправить запрос</span>';
+                statusDiv.innerHTML = '<span>❌</span><span>Ошибка при запуске капчи</span>';
+                statusDiv.classList.add('error');
+            }
+        });
+    </script>
+</body>
+</html>

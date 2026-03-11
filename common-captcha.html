@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тестовый сайт с Yandex SmartCaptcha и определением региона</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        form {
+            margin: 20px 0;
+        }
+        #captcha-container {
+            min-height: 100px;
+            margin: 20px 0;
+        }
+        button {
+            background: #0070e0;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #005bb5;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9f4ff;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .info p {
+            margin: 5px 0;
+        }
+        .token-display {
+            word-break: break-all;
+            background: #fff;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .geo-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f0f7e8;
+            border-radius: 8px;
+            font-size: 14px;
+            border-left: 4px solid #2e7d32;
+        }
+        .geo-info p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🛡️ Демо Yandex SmartCaptcha + GeoIP</h1>
+        <p>Это сайт для тестирования капчи с отображением IP и региона.</p>
+
+        <div class="geo-info" id="geo-info">
+            <p><strong>🌐 Определяем ваше местоположение...</strong></p>
+        </div>
+
+        <form id="demo-form" action="#" method="post">
+            <div id="captcha-container"></div>
+
+            <button type="submit" id="submit-btn" disabled>Отправить форму</button>
+        </form>
+
+        <div>
+            <button type="button" id="reset-btn">🔄 Сбросить капчу</button>
+            <button type="button" id="get-token-btn">🔑 Получить токен</button>
+        </div>
+
+        <div class="info">
+            <p><strong>📡 События:</strong></p>
+            <p id="event-message">Ожидание действий...</p>
+            <p><strong>🪙 Последний токен:</strong></p>
+            <div id="token-display" class="token-display">(не получен)</div>
+        </div>
+    </div>
+
+    <script
+        src="https://smartcaptcha.cloud.yandex.ru/captcha.js?render=onload&onload=initSmartCaptcha"
+        defer
+    ></script>
+
+    <script>
+        async function fetchGeoInfo() {
+            const geoDiv = document.getElementById('geo-info');
+            try {
+                const response = await fetch('http://ip-api.com/json/?fields=status,message,country,regionName,city,query,org');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    geoDiv.innerHTML = `
+                        <p><strong>🌐 Ваш IP:</strong> ${data.query}</p>
+                        <p><strong>📍 Регион:</strong> ${data.country}, ${data.regionName}, ${data.city}</p>
+                        <p><strong>🏢 Провайдер:</strong> ${data.org || 'неизвестно'}</p>
+                    `;
+                } else {
+                    geoDiv.innerHTML = `<p><strong>🌐 Не удалось определить местоположение:</strong> ${data.message || 'неизвестная ошибка'}</p>`;
+                }
+            } catch (error) {
+                geoDiv.innerHTML = `<p><strong>🌐 Ошибка при запросе геоданных:</strong> ${error.message}</p>`;
+                console.error('GeoIP error:', error);
+            }
+        }
+
+        fetchGeoInfo();
+
+        let widgetId = null;
+        let unsubscribe = null;
+
+        function initSmartCaptcha() {
+            if (!window.smartCaptcha) {
+                console.error('Библиотека SmartCaptcha не загрузилась');
+                return;
+            }
+
+            console.log('SmartCaptcha загружена, начинаем рендер...');
+
+            const container = document.getElementById('captcha-container');
+
+            widgetId = window.smartCaptcha.render(container, {
+                sitekey: '<client_key>', // ПОДСТАВИТЬ СВОЙ КЛИЕНТСКИЙ КЛЮЧ СЮДА
+
+                callback: function(token) {
+                    console.log('Callback получен, токен:', token);
+
+                    const submitBtn = document.getElementById('submit-btn');
+                    if (token) {
+                        submitBtn.removeAttribute('disabled');
+                        document.getElementById('token-display').innerText = token;
+                    } else {
+                        submitBtn.setAttribute('disabled', '1');
+                        document.getElementById('token-display').innerText = '(сброшено)';
+                    }
+                }
+            });
+
+            console.log('Виджет отрисован с ID:', widgetId);
+
+            unsubscribe = window.smartCaptcha.subscribe(
+                widgetId,
+                'challenge-visible',
+                () => {
+                    console.log('Событие: challenge-visible — появилось задание');
+                    document.getElementById('event-message').innerText =
+                        '📢 Появилось дополнительное задание (challenge-visible)';
+                }
+            );
+        }
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            if (window.smartCaptcha && widgetId !== null) {
+                window.smartCaptcha.reset(widgetId);
+                console.log('Капча сброшена');
+                document.getElementById('event-message').innerText =
+                    '🔄 Капча сброшена вручную';
+            } else {
+                alert('Капча ещё не инициализирована');
+            }
+        });
+
+        document.getElementById('get-token-btn').addEventListener('click', function() {
+            if (window.smartCaptcha && widgetId !== null) {
+                const token = window.smartCaptcha.getResponse(widgetId);
+                console.log('Токен, полученный через getResponse:', token);
+                if (token) {
+                    alert('Токен: ' + token);
+                    document.getElementById('token-display').innerText = token;
+                } else {
+                    alert('Капча не пройдена или токен отсутствует');
+                    document.getElementById('token-display').innerText = '(нет токена)';
+                }
+            } else {
+                alert('Капча ещё не инициализирована');
+            }
+        });
+
+        document.getElementById('demo-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Форма отправлена! (тестовая демонстрация)');
+        });
+    </script>
+</body>
+</html>
